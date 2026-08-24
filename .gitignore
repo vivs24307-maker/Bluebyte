@@ -73,6 +73,15 @@ data/processed/
 *.nc
 *.hdf5
 
+# ...EXCEPT the synthetic test dataset — small (a few hundred KB),
+# fully deterministic (fixed random seed), and needed so a fresh clone
+# has something to load without regenerating it first. Previously
+# excluded by the blanket *.csv/*.json rules above, which meant
+# `git clone` never got these files even though load_synthetic_dataset.py
+# expects them to exist.
+!db/synthetic_data/data/*.csv
+!db/synthetic_data/data/*.json
+
 # Jupyter
 .ipynb_checkpoints/
 

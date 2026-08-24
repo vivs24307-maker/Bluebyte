@@ -7,11 +7,13 @@ interface TopBarProps {
   onExport: () => void
   exporting: boolean
   wsStatus: 'connecting' | 'connected' | 'disconnected'
+  searchQuery: string
+  onSearchChange: (value: string) => void
 }
 
 const WINDOWS = ['Last 24 h', 'Last 48 h', 'Last 7 d', 'Season to date']
 
-export function TopBar({ window: timeWindow, onWindowChange, onExport, exporting, wsStatus }: TopBarProps) {
+export function TopBar({ window: timeWindow, onWindowChange, onExport, exporting, wsStatus, searchQuery, onSearchChange }: TopBarProps) {
   const [clock, setClock] = useState(() => new Date())
   const [open, setOpen] = useState(false)
 
@@ -37,7 +39,9 @@ export function TopBar({ window: timeWindow, onWindowChange, onExport, exporting
         />
         <input
           type="search"
-          placeholder="Query across domains — e.g. sardine AND chl-a > 2"
+          value={searchQuery}
+          onChange={(e) => onSearchChange(e.target.value)}
+          placeholder="Search stations, IDs, or fishing zones..."
           aria-label="Cross-domain query"
           className="h-8 w-full rounded-md border border-line bg-abyss-800 pl-8 pr-3 text-xs text-foam placeholder:text-foam-dim focus:border-tide focus:outline-none focus:ring-1 focus:ring-tide/40"
         />

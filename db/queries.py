@@ -23,6 +23,7 @@ same shape callers already expect.
 """
 
 from datetime import datetime, timezone
+from typing import Optional
 from db.connection import get_db
 from db.etl_pipeline import compute_h3_index as _h3_index  # single source of
 # truth for lat/lon -> H3 int conversion, so this can't drift out of sync
@@ -115,6 +116,61 @@ async def get_active_alerts():
         return [dict(row) for row in rows]
 
 
+async def get_recent_alerts(limit: int = 20, severity: Optional[str] = None):
+    """Unlike get_active_alerts (unacknowledged only), this returns ALL
+    alerts regardless of acknowledgement status — what /alerts/recent
+    actually needs. Added because the route previously had nowhere in
+    db/queries.py to get this from and fell back to hardcoded samples."""
+    async with get_db() as db:
+        if severity:
+            rows = await db.fetch(
+                """
+                SELECT id, alert_type, severity, sensor_id,
+                       ST_Y(geom::geometry) AS lat, ST_X(geom::geometry) AS lon,
+                       message, created_at, acknowledged
+                FROM alerts
+                WHERE severity = $1
+                ORDER BY created_at DESC
+                LIMIT $2
+                """,
+                severity, limit,
+            )
+        else:
+            rows = await db.fetch(
+                """
+                SELECT id, alert_type, severity, sensor_id,
+                       ST_Y(geom::geometry) AS lat, ST_X(geom::geometry) AS lon,
+                       message, created_at, acknowledged
+                FROM alerts
+                ORDER BY created_at DESC
+                LIMIT $1
+                """,
+                limit,
+            )
+        return [dict(row) for row in rows]
+
+
+async def get_alert_stats():
+    """Summary counts for /alerts/stats, computed in SQL rather than
+    pulling every row into Python."""
+    async with get_db() as db:
+        total_row = await db.fetchrow(
+            "SELECT count(*) AS total, count(*) FILTER (WHERE NOT acknowledged) AS active FROM alerts"
+        )
+        by_severity = await db.fetch(
+            "SELECT severity, count(*) AS n FROM alerts GROUP BY severity"
+        )
+        by_type = await db.fetch(
+            "SELECT alert_type, count(*) AS n FROM alerts GROUP BY alert_type"
+        )
+        return {
+            "total": total_row["total"],
+            "active": total_row["active"],
+            "by_severity": {r["severity"]: r["n"] for r in by_severity},
+            "by_type": {r["alert_type"]: r["n"] for r in by_type},
+        }
+
+
 async def get_fishing_zones():
     async with get_db() as db:
         rows = await db.fetch(
@@ -181,6 +237,27 @@ async def insert_alert(data: dict):
 async def get_all_species():
     async with get_db() as db:
         rows = await db.fetch("SELECT * FROM species")
+        return [dict(row) for row in rows]
+
+
+async def get_all_grids():
+    """Backs server/api/routes/ocean.py's GET /ocean-data/grids — was
+    calling a function that didn't exist in this module (always fell
+    through to the hardcoded sample data). Returns grid centroid, since
+    that's what the route's SAMPLE_GRIDS fallback shape expects
+    (lat_center/lon_center), alongside the full polygon as GeoJSON for
+    callers that want it."""
+    async with get_db() as db:
+        rows = await db.fetch(
+            """
+            SELECT id, grid_code, area_name,
+                   ST_Y(ST_Centroid(geom::geometry)) AS lat_center,
+                   ST_X(ST_Centroid(geom::geometry)) AS lon_center,
+                   ST_AsGeoJSON(geom::geometry) AS geojson
+            FROM ocean_grids
+            ORDER BY grid_code
+            """
+        )
         return [dict(row) for row in rows]
 
 

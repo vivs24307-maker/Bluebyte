@@ -1,23 +1,20 @@
-# ── BlueByte AI — Master Dependencies ──────────────────────────────────
-# Install: pip install -r requirements.txt
+# Web & API Server
+fastapi==0.103.1
+uvicorn==0.23.2
+websockets==11.0.3
+pyzmq==25.1.1
 
-# ── Core Backend ──
-fastapi>=0.104.0
-uvicorn[standard]>=0.24.0
-pydantic>=2.0.0
+# Database Layer — single source of truth is db/requirements.txt
+# (asyncpg, h3, and friends), included here so `pip install -r
+# requirements.txt` at repo root still gets a working, non-conflicting
+# set of versions instead of two files silently disagreeing.
+-r db/requirements.txt
+pandas==2.1.0
 
-# ── WebSocket & Async ──
-websockets>=12.0
+# GNN Engine (Moved from ml/gnn_engine/requirements.txt)
+torch>=2.0.0
+torch-geometric>=2.4.0
+scikit-learn==1.3.0
 
-# ── ZeroMQ Streaming ──
-pyzmq>=25.1.0
-
-# ── Database (SQLite async) ──
-aiosqlite>=0.19.0
-
-# ── Data Processing ──
-numpy>=1.24.0
-
-# ── Optional: ML / GNN (uncomment if using full GNN mode) ──
-# torch>=2.0.0
-# torch-geometric>=2.4.0
+# Utilities
+python-dotenv==1.0.0

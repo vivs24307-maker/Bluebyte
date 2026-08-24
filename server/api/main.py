@@ -14,7 +14,7 @@ import sys
 # Add project root to path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
 
-from server.api.routes import ocean, predictions, alerts
+from server.api.routes import ocean, predictions, alerts, chat
 from server.api.websocket_manager import router as ws_router
 from server.api.zmq_bridge import ZMQBridge
 
@@ -60,11 +60,21 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# CORS — allow all origins for hackathon demo
+# CORS — allow all origins for hackathon demo.
+# FIXED: allow_origins=["*"] + allow_credentials=True is invalid per
+# the CORS spec — browsers block credentialed requests against a
+# wildcard origin, so this was silently blocking anything that sent
+# cookies/Authorization with credentials:'include', even though the
+# server thought it was allowing everything. The frontend doesn't
+# actually send credentials anywhere (checked frontend/react_app/src/),
+# so allow_credentials=False is the correct fix here — flip this back
+# to True (and swap allow_origins for an explicit origin list) only if
+# cookie-based auth gets added later, since wildcard + credentials=True
+# can never work together.
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
-    allow_credentials=True,
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -73,6 +83,7 @@ app.add_middleware(
 app.include_router(ocean.router, prefix="/api/v1", tags=["Ocean Data"])
 app.include_router(predictions.router, prefix="/api/v1", tags=["Predictions"])
 app.include_router(alerts.router, prefix="/api/v1", tags=["Alerts"])
+app.include_router(chat.router, prefix="/api/v1", tags=["AI Chatbot (GraphRAG)"])
 app.include_router(ws_router, tags=["WebSocket"])
 
 # Serve frontend static files

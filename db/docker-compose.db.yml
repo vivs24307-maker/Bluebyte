@@ -1,15 +1,19 @@
 version: "3.9"
 
-# Local dev environment: PostgreSQL + PostGIS + TimescaleDB in one image.
-# `timescale/timescaledb-ha` bundles PostGIS alongside TimescaleDB, so you
-# don't need to juggle two separate Postgres images/extensions.
+# Local dev environment: PostgreSQL + PostGIS + TimescaleDB + pgvector
+# in one image. `timescale/timescaledb-ha` bundles PostGIS and pgvector
+# alongside TimescaleDB, so you don't need to juggle three separate
+# Postgres images/extensions.
 #
 # Usage:
 #   docker compose -f docker-compose.db.yml up -d
-#   psql "postgresql://bluebyte:bluebyte_dev@localhost:5432/bluebyte" -f schema_postgis.sql
+#   (schema auto-applies on first container start via the
+#    docker-entrypoint-initdb.d mounts below — schema_postgis.sql, then
+#    schema_postgis_addendum.sql, then schema_pgvector.sql, in that order)
 #
-# The schema also auto-applies on first container start via the
-# docker-entrypoint-initdb.d mount below.
+# If `CREATE EXTENSION vector` in schema_pgvector.sql fails, your image
+# tag doesn't bundle pgvector — switch to `pgvector/pgvector:pg16` (loses
+# TimescaleDB) or a custom image layering both, and re-check.
 
 services:
   db:
@@ -28,6 +32,7 @@ services:
       - bluebyte_pgdata:/home/postgres/pgdata/data
       - ./schema_postgis.sql:/docker-entrypoint-initdb.d/01_schema.sql:ro
       - ./schema_postgis_addendum.sql:/docker-entrypoint-initdb.d/02_schema_addendum.sql:ro
+      - ./schema_pgvector.sql:/docker-entrypoint-initdb.d/03_schema_pgvector.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U bluebyte -d bluebyte"]
       interval: 5s

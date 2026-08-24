@@ -120,7 +120,7 @@ async def get_pfz_predictions():
                 "status": "ok",
                 "source": "dbscan_clustering",
                 "count": len(computed_zones),
-                "zones": computed_zones,
+                "zones": [_normalize_pfz_zone(z, from_clustering=True) for z in computed_zones],
             }
     except Exception as e:
         logger.debug(f"Clustering not available, using sample PFZ data: {e}")
@@ -129,8 +129,40 @@ async def get_pfz_predictions():
         "status": "ok",
         "source": "precomputed",
         "count": len(SAMPLE_PFZ_ZONES),
-        "zones": SAMPLE_PFZ_ZONES,
+        "zones": [_normalize_pfz_zone(z, from_clustering=False) for z in SAMPLE_PFZ_ZONES],
     }
+
+
+def _normalize_pfz_zone(zone: dict, from_clustering: bool) -> dict:
+    """Both PFZ response paths (DBSCAN clustering and the hardcoded
+    sample fallback) previously used different key names — neither
+    matched what frontend/react_app/src/hooks/useApi.ts actually reads
+    (z.lat, z.lon, z.species, z.confidence), so the map overlay was
+    silently broken (NaN coordinates, species always 'Mixed')
+    regardless of which backend path served the response.
+
+    This normalizes both shapes into the one the frontend expects,
+    while keeping the original fields alongside for anything else that
+    might want them (e.g. bounding_box for the clustering path)."""
+    if from_clustering:
+        lat, lon = zone.get("centroid", (None, None))
+        return {
+            **zone,
+            "lat": lat,
+            "lon": lon,
+            "species": (zone.get("dominant_species") or [None])[0]
+                if isinstance(zone.get("dominant_species"), list) else zone.get("dominant_species"),
+            "confidence": zone.get("pfz_score"),
+        }
+    else:
+        dominant = zone.get("dominant_species")
+        return {
+            **zone,
+            "lat": zone.get("center_lat"),
+            "lon": zone.get("center_lon"),
+            "species": dominant[0] if isinstance(dominant, list) and dominant else dominant,
+            "confidence": zone.get("pfz_score"),
+        }
 
 
 @router.get("/predictions/species/{grid_id}")

@@ -24,9 +24,13 @@ async def init_database():
 
     print("[DB] Seeding sample data...")
     try:
-        from db.seed_data import seed_all
-        await seed_all()
-        print("[OK] Sample data seeded successfully")
+        from db.synthetic_data.generate_synthetic_dataset import main as generate_dataset
+        from db.load_synthetic_dataset import load_all
+
+        generate_dataset()  # writes CSV/JSON files to db/synthetic_data/data/
+        await load_all()     # loads them into Postgres (buoy/river through
+                              # the real outlier-preserving ETL, not a shortcut)
+        print("[OK] Sample data generated and seeded successfully")
     except Exception as e:
         print(f"[WARN] Seeding: {e}")
 

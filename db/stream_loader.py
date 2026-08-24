@@ -21,7 +21,7 @@ from typing import Iterator
 import numpy as np
 import xarray as xr
 
-from etl_pipeline import OutlierPreservingETL
+from db.etl_pipeline import OutlierPreservingETL
 
 DEFAULT_CHUNK_SIZE = 5000  # rows per batch handed to the ETL — tune against
                             # available memory and DB round-trip cost

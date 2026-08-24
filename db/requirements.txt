@@ -4,3 +4,11 @@ numpy>=1.26.0
 xarray>=2024.1.0
 netCDF4>=1.6.5
 dask>=2024.1.0
+
+# ── Vector embeddings (db/embeddings.py, schema_pgvector.sql) ──
+# sentence-transformers is optional: if it (or its model download) is
+# unavailable, embeddings.py automatically falls back to an offline
+# deterministic hashing embedding of the same dimension, so the vector
+# search layer still works end-to-end without it — install it for
+# higher-quality semantic search.
+sentence-transformers>=2.2.2
